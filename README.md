@@ -2,17 +2,27 @@
 
 An AI system that estimates Body Mass Index (BMI) from a single full-body photograph using pose estimation, anthropometric ratio extraction, and machine learning inference. This project explores the intersection of computer vision and health metrics without requiring specialized hardware.
 
+## Research Foundation
+
+This project translates published peer-reviewed research into a functional prototype. The pose-to-anthropometric-ratio methodology is grounded in three key works:
+
+- Sui, J. C., Zhao, et al. — *Body Weight Estimation Using Virtual Anthropometric Measurements from a Single Image*
+- Manichand, F. R., et al. — *Digital Scale: Open-Source On-Device BMI Estimation from Smartphone Camera Images Trained on a Large-Scale Real-World Dataset*
+- Jin, Z., Huang, J., Wang, W., et al. — *Estimating Human Weight from a Single Image*
+
+Building on the Digital Scale approach (MediaPipe pose → body ratios → ML regression), this project extends the pipeline with a novel **GPT-as-Judge reasoning layer** that provides natural-language confidence scoring and clinical context alongside each numeric BMI estimate — making the output interpretable by non-technical users.
+
 ## Problem Statement
 
-Traditional BMI calculation requires a scale and measuring tape -- tools not always available in telehealth, fitness tracking, or resource-constrained settings. This project investigates whether a single 2D image contains enough anthropometric signal to produce a meaningful BMI estimate, and whether AI reasoning can add clinical context to a numeric output.
+Traditional BMI calculation requires a scale and measuring tape — tools not always available in telehealth, fitness tracking, or resource-constrained settings. This project investigates whether a single 2D image contains enough anthropometric signal to produce a meaningful BMI estimate, and whether AI reasoning can add clinical context to a numeric output.
 
 ## How It Works
 
 The system operates in three stages:
 
-1. **Pose Estimation** -- MediaPipe extracts 33 body landmarks from the input image, localizing shoulders, hips, nose, and ankles.
-2. **Ratio Extraction** -- Two body ratios are computed from the landmark coordinates: Shoulder-to-Waist Ratio (SWR) and Waist-to-Height Ratio (WHR). These ratios serve as the feature vector, normalizing for camera distance and image resolution.
-3. **BMI Prediction** -- A scikit-learn Random Forest regressor maps the (SWR, WHR) pair to a BMI estimate, which is then categorized into standard WHO weight classes (Underweight, Normal Weight, Overweight, Obese).
+1. **Pose Estimation** — MediaPipe extracts 33 body landmarks from the input image, localizing shoulders, hips, nose, and ankles.
+2. **Ratio Extraction** — Two body ratios are computed from the landmark coordinates: Shoulder-to-Waist Ratio (SWR) and Waist-to-Height Ratio (WHR). These ratios serve as the feature vector, normalizing for camera distance and image resolution.
+3. **BMI Prediction** — A scikit-learn Random Forest regressor maps the (SWR, WHR) pair to a BMI estimate, which is then categorized into standard WHO weight classes (Underweight, Normal Weight, Overweight, Obese).
 
 ## Technical Architecture
 
@@ -141,4 +151,4 @@ This project is a work in progress. License to be determined.
 
 ---
 
-*Status: Active Development -- features and performance metrics are evolving.*
+*Status: Active Development — features and performance metrics are evolving.*
