@@ -1,4 +1,3 @@
-# src/data/load_real_data.py
 import pandas as pd
 import numpy as np
 from pathlib import Path
