@@ -18,7 +18,7 @@ from model import SEDensenet121, SEDensenet201, load_pretrained_densenet, load_p
 from datasets import load_dataset
 from dataset import BMIDataset, df_test, df_train
 
-def load_model(model_type="densenet121", device="cuda"):
+def load_model(model_path, model_type="densenet121", device="cuda"):
     """
     Load a trained model from checkpoint.
     
@@ -30,20 +30,29 @@ def load_model(model_type="densenet121", device="cuda"):
     Returns:
         Loaded model in evaluation mode
     """
-
+    if not os.path.exists(model_path):
+        print(f"Model checkpoint not found at {model_path}")
+        print("Please download the model weights from the authors")
+        print("Contact: rmanichand@ethz.ch or planger@ethz.ch")
+        return None
     # Initialize the model with pre-trained weights
     if model_type.lower() == "densenet121":
         model = SEDensenet121()
-        load_pretrained_densenet(model)  # Load ImageNet weights
     elif model_type.lower() == "densenet201":
         model = SEDensenet201()
-        load_pretrained_densenet201(model)  # Load ImageNet weights
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
+    # Load checkpoint
+    checkpoint = torch.load(model_path, map_location=device, weights_only=False)
+    if 'state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['state_dict'])
+    else:
+        model.load_state_dict(checkpoint)
+
     model.to(device)
     model.eval()
-    #print(f"Loaded {model_type} model from {model_path}")
+    print(f"Loaded {model_type} model from {model_path}")
     return model
 
 def predict_bmi(model, dataloader, device="cuda"):
@@ -90,6 +99,8 @@ def predict_bmi(model, dataloader, device="cuda"):
 
 def main():
     parser = argparse.ArgumentParser(description='BMI Prediction using DenseNet')
+    parser.add_argument('--model_path', type=str, default='weights/best_model.ckpt',
+                        help='Path to model checkpoint')
     parser.add_argument('--model_type', type=str, default='densenet121',
                         choices=['densenet121', 'densenet201'],
                         help='Type of model to use')
@@ -115,7 +126,7 @@ def main():
 
     #Load model 
     print("Loading model...")
-    model = load_model(args.model_type, device)
+    model = load_model(args.model_path, args.model_type, device)
     if model is None:
         print("Failed to load model. Exiting...")
         sys.exit(1)

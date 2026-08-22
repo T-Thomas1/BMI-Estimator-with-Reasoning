@@ -82,7 +82,7 @@ class BMIDataset(Dataset):
         image = self.transform(image)
         weight = row.get('weight', None) #Additional metadata for calculation of BMI
         height = row.get('height', None)
-        bmi = (weight / (height ** 2) * 703)
+        bmi = weight / (height / 100.0) ** 2
         return image, bmi, row.get('id', idx)
 
  # def load_sample_data(load_dataset="data"):
