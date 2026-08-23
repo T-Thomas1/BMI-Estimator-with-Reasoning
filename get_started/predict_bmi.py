@@ -14,8 +14,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import argparse
 
-from model import SEDensenet121, SEDensenet201, load_pretrained_densenet, load_pretrained_densenet201
-from datasets import load_dataset
+from model import SEDensenet121, SEDensenet201, load_pretrained_densenet #, load_pretrained_densenet201
+# from datasets import load_dataset
 from dataset import BMIDataset, df_test, df_train
 
 def load_model(model_path, model_type="densenet121", device="cuda"):

@@ -7,7 +7,7 @@ import pandas as pd
 import os
 from datasets import load_dataset
 
-ds = load_dataset("Dongrae/celeb-fbi") #The dataset the conformal prediction pipeline will use split 3 ways. 70/15/15
+ds = load_dataset("Dongrae/celeb-fbi")
 df_train = ds['train']
 df_test = ds['test']
 
@@ -85,7 +85,7 @@ class BMIDataset(Dataset):
         bmi = weight / (height / 100.0) ** 2
         return image, bmi, row.get('id', idx)
 
- # def load_sample_data(load_dataset="data"):
+    def load_sample_data(load_dataset="data"):
         """ Load sample data for BMI Prediction.
         
         Args:
