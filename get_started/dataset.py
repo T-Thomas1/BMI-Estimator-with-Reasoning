@@ -46,7 +46,7 @@ class BMIDataset(Dataset):
         self.df = hf_dataset.select(valid_indices)
         self.image_col = image_col
         self.transform = transforms.Compose([
-            transforms.Lambda(lambda img: img.convert('RGB') if hasattr(img, 'mode') and img.mode == 'RGBA' else img),
+            transforms.Lambda(lambda img: img.convert('RGB') if hasattr(img, 'mode') and img.mode != 'RGB' else img),
             CustomResize(IMG_SIZE),
             transforms.Pad(IMG_SIZE),
             transforms.CenterCrop(IMG_SIZE),
@@ -78,7 +78,7 @@ class BMIDataset(Dataset):
                     if hasattr(value, 'size') or hasattr(value, 'shape'):
                         image = value
                         break
-
+                    
         image = self.transform(image)
         weight = row.get('weight', None) #Additional metadata for calculation of BMI
         height = row.get('height', None)
