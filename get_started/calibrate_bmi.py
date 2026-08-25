@@ -49,7 +49,7 @@ def calibrate_bmi(model, dataloader, device="cuda"):
     y_hat = []
     model.eval()
     with torch.no_grad():
-        for images, bmis, ids in calibration_dataloader:
+        for images, bmis, ids in dataloader:
             images = images.to(device, dtype=torch.float32)
             preds = model(images).cpu().numpy().flatten()
             for p, y in zip(preds, bmis):
@@ -62,7 +62,34 @@ def calibrate_bmi(model, dataloader, device="cuda"):
     alpha = 0.1
     k = int(np.ceil((n + 1) * (1 - alpha)))
     q_hat = float(np.sort(scores)[k-1])
-    print(q_hat)
+    return q_hat
+
+def coverage(prediction_sets, evaluation): #regression Coverage
+    n = len(evaluation)
+    correct = 0
+    for i in range(n):
+        lower, upper = prediction_sets[i] #Prediction sets are the pair of lower and upper
+        if lower <= evaluation[i] <= upper:
+            correct += 1
+    coverage_rate = correct / n
+    interval_width = sum(u - l for l, u in prediction_sets) / n
+    return coverage_rate, interval_width
 
 model = load_model(args.model_path, args.model_type, device) #Load our model
-calibrate_bmi(model, calibration_dataloader, device)
+q_hat = calibrate_bmi(model, calibration_dataloader, device)
+evaluation_dataloader = DataLoader(evaluation_set, batch_size=args.batch_size, shuffle=False)
+y_true_eval, y_hat_eval = [], []
+model.eval()
+with torch.no_grad():
+    for images, bmis, ids in evaluation_dataloader:
+        images = images.to(device, dtype=torch.float32)
+        preds = model(images).cpu().numpy().flatten()
+        for p, y in zip(preds, bmis):
+            y_hat_eval.append(float(p))
+            y_true_eval.append(y.item())
+    y_true_eval = np.array(y_true_eval)
+    y_hat_eval = np.array(y_true_eval)
+
+    prediction_sets = np.stack([y_hat_eval - q_hat, y_hat_eval + q_hat], axis=1)
+    coverage_rate, avg_width = coverage(prediction_sets, y_true_eval)
+    print("coverage:", coverage_rate, "| avg interval width:", avg_width)
