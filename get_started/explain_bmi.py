@@ -88,7 +88,7 @@ def main():
     print(f"id {sample_id} | age {age} | gender {gender}")
     print(f"predicted BMI {pred:.1f} | 90% interval [{lower:.1f}, {upper:.1f}] | actual {actual:.1f}")
 
-    client = OpenAI(api_key=load_api_key)
+    client = OpenAI(api_key=load_api_key())
     print("\n--- explanation ---")
     print(explain_bmi(client, pred, lower, upper, age, gender))
 
