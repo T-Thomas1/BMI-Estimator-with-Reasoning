@@ -6,7 +6,8 @@ openai_key.txt
 # Python
 pycache/
 *.py[cod]
-*.so
+*.so\
+*.pk1
 
 # IDE / OS
 .idea/
