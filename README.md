@@ -1,154 +1,89 @@
 # BMI Estimator with Reasoning
 
-An AI system that estimates Body Mass Index (BMI) from a single full-body photograph using pose estimation, anthropometric ratio extraction, and machine learning inference. This project explores the intersection of computer vision and health metrics without requiring specialized hardware.
+Uncertainty-aware BMI estimation from a single image -- Conformal prediction + GPT-as-Judge reasoning
+
+Most BMI-from-image models output a single number with no indication of how trustworthy it is. This project adds two layers on top of a DenseNet regressor: a conformal prediction layer that turns the point estimate into a statistically calibrated confidence interval, and a GPT-as-Judge layer that explains the result in plain English.
+    Instead of "BMI = 27.3", the system says "BMI = 27.3, 90% interval [20.9, 33.7], and here's how much you should trust it."
 
 ## Research Foundation
 
-This project translates published peer-reviewed research into a functional prototype. The pose-to-anthropometric-ratio methodology is grounded in three key works:
+This project translates published peer-reviewed research into a functional prototype. The methodology is grounded in three key works:
 
-- Sui, J. C., Zhao, et al. — *Body Weight Estimation Using Virtual Anthropometric Measurements from a Single Image*
-- Manichand, F. R., et al. — *Digital Scale: Open-Source On-Device BMI Estimation from Smartphone Camera Images Trained on a Large-Scale Real-World Dataset*
-- Jin, Z., Huang, J., Wang, W., et al. — *Estimating Human Weight from a Single Image*
+- Sui et al. — Body Weight Estimation Using Virtual Anthropometric Measurements from a Single Image
+- Manichand et al. — Digital Scale: Open-Source On-Device BMI Estimation from Smartphone Camera Images Trained on a Large-Scale Real-World Dataset
+- Jin et al. — Estimating Human Weight from a Single Image
 
-Building on the Digital Scale approach (MediaPipe pose → body ratios → ML regression), this project extends the pipeline with a novel **GPT-as-Judge reasoning layer** that provides natural-language confidence scoring and clinical context alongside each numeric BMI estimate — making the output interpretable by non-technical users.
+Building on the Digital Scale approach (SE-DenseNet image-to-BMI regression), this project extends the pipeline with split conformal prediction for distribution-free uncertainty quanitification and a GPT-as-Judge reasoning layer for interpretability.
 
-## Problem Statement
-
-Traditional BMI calculation requires a scale and measuring tape — tools not always available in telehealth, fitness tracking, or resource-constrained settings. This project investigates whether a single 2D image contains enough anthropometric signal to produce a meaningful BMI estimate, and whether AI reasoning can add clinical context to a numeric output.
 
 ## How It Works
 
-The system operates in three stages:
-
-1. **Pose Estimation** — MediaPipe extracts 33 body landmarks from the input image, localizing shoulders, hips, nose, and ankles.
-2. **Ratio Extraction** — Two body ratios are computed from the landmark coordinates: Shoulder-to-Waist Ratio (SWR) and Waist-to-Height Ratio (WHR). These ratios serve as the feature vector, normalizing for camera distance and image resolution.
-3. **BMI Prediction** — A scikit-learn Random Forest regressor maps the (SWR, WHR) pair to a BMI estimate, which is then categorized into standard WHO weight classes (Underweight, Normal Weight, Overweight, Obese).
-
-## Technical Architecture
-
-```
-Input Image (RGB)
-       |
-       v
-[Pose Estimation] --> MediaPipe Pose (33 landmarks)
-       |
-       v
-[Ratio Extraction] --> SWR (shoulder_width / hip_width)
-                   --> WHR (hip_width / height)
-       |
-       v
-[BMI Predictor] --> Random Forest Regressor + StandardScaler
-       |
-       v
-Output: BMI value + WHO category
-```
+1. Regression - a Squeeze-and-Excitation DenseNet (SE-DenseNet121) in pyTorch maps a single 224x224 image to a BMI point estimate.
+2. Conformal calibration - on a held-out calibration set, the absolute residuals are collected and q is taken as their 90th-percentile. Every prediction becomes an interval.
+3. Reasoning - GPT-4.1-Nano receives the estimate, interval, and demographic context, and returns a plain-English explanation with an honest confidence read.
 
 ## Model Performance
 
-The Random Forest model is trained on BEDLAM 3D body measurement data, with planned integration of UniqueData/body-measurements-dataset for improved real-world generalization.
+Evaluated on Celeb-FBI (7,208 real images; 6,174 with valid weight/height labels), on a held-out test set of 620 samples:
 
-| Metric | Value |
-|--------|-------|
-| Algorithm | Random Forest Regressor (n=100, max_depth=10) |
-| Features | SWR, WHR |
-| Test Split | 20% holdout (random_state=42) |
-| Performance | Reported at training time (MAE, R-squared) |
+| Metric              | Value              |
+| MAE                 | 2.81 BMI Points    |
+| MAPE                | 11.56%             |
+| Conformal q         | 6.44               |
+| Verified Coverage   | 90.4 % (target 90%)|
 
-Performance varies with image quality, pose angle, clothing, and occlusions. Front-facing, full-body photos with minimal clothing produce the most reliable results.
+Best case: id 1589 -- predicted 19.93, actual 19.93. Worst case: id 7117 -- predicted 33.48, actual 61.23 (an extreme BMI the model under-predicts; see Limitations)
+
+## Example Reasoning
+
+For a typical sample (predicted 19.1, 90% interval [12.7, 25.5]):
+    "The estimate suggests a BMI around 19.1, which is in the health range, but the true BMI could be anywhere from about 12.7 to 25.5. Since the range is quite wide, there's a lot of uncertainty, so this number should be taken as a rough guess. Keep in mind that this is just an estimate and not a precise measurement."
 
 ## Project Structure
 
 ```
 BMI-Estimator-with-Reasoning/
-|-- app.py                          # CLI entry point: python app.py photo.jpg
-|-- test_dataset.py                 # Dataset access validation
-|-- bmi_system.py                   # System-level orchestration (WIP)
-|-- requirements.txt                # Python dependencies
-|-- config/
-|   |-- settings.py                 # Centralized configuration (paths, model names, seed)
-|-- src/
-|   |-- models/
-|   |   |-- pose_estimator.py       # MediaPipe pose detection + ratio extraction
-|   |   |-- bmi_predictor.py        # Random Forest inference + WHO categorization
-|   |-- data/
-|       |-- load_real_data.py       # BEDLAM + UniqueData pipeline, synthetic fallback
-|-- scripts/
-|   |-- train_with_real_data.py     # Model training + evaluation script
-|   |-- load_datasets.py            # Dataset exploration utilities
-|   |-- explore_bedlam.py           # BEDLAM data structure exploration
-|-- models/
-|   |-- pretrained/
-|       |-- checkpoints/            # Serialized model + scaler (.pkl)
-|-- data/
-    |-- bmi_dataset.csv             # Synthetic training data
-    |-- combined_dataset.csv        # Combined BEDLAM + synthetic
+|-- get_started/                    # Active code (BMI Estimator w/Reasoning)
+|   |-- dataset.py                  # Celeb-FBI loading + preprocessing (BMIDataset)
+|   |-- model.py                    # SE-DenseNet architecture
+|   |-- predict_bmi.py              # Inference (point estimate + conformal interval)
+|   |-- train_bmi.py                # Training loop
+|   |-- calibrate_bmi.py            # Conformal calibration -> q_hat
+|   |-- explain_bmi.py              # GPT-as-Judge reasoning layer
+|   |-- requirements.txt            
+|-- src/                            # Upstream DigitalScale reference code
+|-- weights/                        # best_model.ckpt + q_hat.npy
 ```
 
 ## Installation
 
-```bash
-git clone https://github.com/T-Thomas1/BMI-Estimator-with-Reasoning.git
+bash
+git clone https://github.com/T-Thomas1/BMI-Estimator-with-Reasoning
 cd BMI-Estimator-with-Reasoning
-pip install -r requirements.txt
-```
+pip install -r get_started/requirements.txt
 
 ## Usage
 
-### Quick Start (with pre-trained model)
+bash
+python get_started/calibrate_bmi.py
+python get_started/predict_bmi.py
+python get_started/explain_bmi.py
 
-```bash
-python app.py path/to/photo.jpg
-```
+## Limitations
 
-Output:
-```
-BMI: 24.3 (Normal weight)
-Shoulder/Hip: 1.351
-Waist/Height: 0.472
-```
-
-### Training from Scratch
-
-```bash
-python scripts/train_with_real_data.py
-```
-
-The training script loads BEDLAM 3D measurements, combines them with any available UniqueData samples, trains the Random Forest model, reports MAE and R-squared, and saves the model to `models/pretrained/checkpoints/bmi_model.pkl`.
-
-## Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| PyTorch 2.0+ / torchvision | Foundation for future deep learning models |
-| MediaPipe 0.10+ | Pose landmark detection (33-point model) |
-| OpenCV 4.8+ | Image loading and color space conversion |
-| scikit-learn 1.3+ | Random Forest model, preprocessing, evaluation |
-| pandas 2.0+ | Dataset manipulation and CSV I/O |
-| HuggingFace datasets / hub | Remote dataset access pipeline |
+- Constant interval width - split conformal gives every sample the same q. This motivates CQR as the next step.
+- Under-predicts extreme BMIs.
+- Not a medical device.
 
 ## Roadmap
 
-This is an active work in progress. Planned improvements:
-
-- [ ] Integrate UniqueData/body-measurements-dataset for real-world training data
-- [ ] Add LLaVA (llava-1.5-7b) for multimodal reasoning on BMI predictions
-- [ ] Integrate SAM (Segment Anything Model) for foreground person segmentation
-- [ ] Build a Gradio or Streamlit web interface for interactive demos
-- [ ] Add confidence scoring alongside numeric predictions
-- [ ] Improve robustness to varied poses, clothing, and lighting conditions
-
-## Design Decisions
-
-**Why body ratios instead of pixel-to-BMI regression?** Raw pixel approaches overfit to camera parameters (distance, focal length, resolution). Body ratios normalize these factors, allowing the model to generalize across different photo conditions.
-
-**Why Random Forest?** For a two-feature problem on moderate data, ensemble tree methods provide interpretable results with strong baseline performance. A neural approach is planned once dataset size justifies the added complexity.
-
-**Why MediaPipe?** MediaPipe provides production-grade pose estimation that runs on CPU, making the pipeline accessible without GPU hardware for inference.
+- Conformalized Quantile Regression (CQR) for adaptive, per-image interval widths.
+- A photo-uoload interface wrapping the reasoning layer for interactive use.
 
 ## License
 
-This project is a work in progress. License to be determined.
+Work in progress -- license to be determined.
 
 ---
 
-*Status: Active Development — features and performance metrics are evolving.*
+*Status: Active Development*

@@ -1,0 +1,16 @@
+#Secrets - never commit
+.env
+openai_key.txt
+*.key
+
+# Python
+pycache/
+*.py[cod]
+*.so\
+*.pkl
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
