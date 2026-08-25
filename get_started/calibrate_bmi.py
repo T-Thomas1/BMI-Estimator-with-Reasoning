@@ -77,6 +77,8 @@ def coverage(prediction_sets, evaluation): #regression Coverage
 
 model = load_model(args.model_path, args.model_type, device) #Load our model
 q_hat = calibrate_bmi(model, calibration_dataloader, device)
+np.save("weights/q_hat.npy", q_hat)
+print(f"Saved q_hat = {q_hat:.4f} to weights/q_hat.npy")
 evaluation_dataloader = DataLoader(evaluation_set, batch_size=args.batch_size, shuffle=False)
 y_true_eval, y_hat_eval = [], []
 model.eval()
@@ -88,7 +90,7 @@ with torch.no_grad():
             y_hat_eval.append(float(p))
             y_true_eval.append(y.item())
     y_true_eval = np.array(y_true_eval)
-    y_hat_eval = np.array(y_true_eval)
+    y_hat_eval = np.array(y_hat_eval)
 
     prediction_sets = np.stack([y_hat_eval - q_hat, y_hat_eval + q_hat], axis=1)
     coverage_rate, avg_width = coverage(prediction_sets, y_true_eval)

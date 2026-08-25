@@ -13,6 +13,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import argparse
+import numpy as np
 
 from model import SEDensenet121, SEDensenet201, load_pretrained_densenet #, load_pretrained_densenet201
 # from datasets import load_dataset
@@ -55,7 +56,7 @@ def load_model(model_path, model_type="densenet121", device="cuda"):
     print(f"Loaded {model_type} model from {model_path}")
     return model
 
-def predict_bmi(model, dataloader, device="cuda"):
+def predict_bmi(model, dataloader, device="cuda", q_hat=None):
     """
     Run BMI prediction on a dataset.
     
@@ -67,24 +68,27 @@ def predict_bmi(model, dataloader, device="cuda"):
     Returns:
         List of results with predictions and metadata
     """
-    results = []
+    results = [] # The list returned
     model.eval()
 
-    with torch.no_grad():
+    with torch.no_grad(): # No gradient allows faster inference
         for batch_idx, (images, bmis, individual_ids) in enumerate(dataloader):
             images = images.to(device, dtype=torch.float32)
-
-            # Get predictions
+            #
             outputs = model(images)
             predicted_bmis = outputs.cpu().numpy().flatten()
 
             # Store results
             for i in range(len(images)):
+                pred = predicted_bmis[i]
                 result = {
                     'individual_id': individual_ids[i],
                     'predicted_bmi': predicted_bmis[i],
                     'actual_bmi': bmis[i].item() if bmis[i] is not None else None,
                 }
+                if q_hat is not None:
+                    result['lower'] = pred - q_hat
+                    result['upper'] = pred + q_hat
                 results.append(result)
 
                 # Print progress
@@ -95,6 +99,8 @@ def predict_bmi(model, dataloader, device="cuda"):
                 else:
                     print(f"ID: {result['individual_id']:<10} | "
                           f"Predicted: {result['predict_bmi']:.2f}")
+                if q_hat is not None:
+                    print(f" 90% interval: [{pred - q_hat:.2f}, {pred + q_hat:.2f}]")
     return results
 
 def main():
@@ -109,6 +115,8 @@ def main():
     parser.add_argument('--device', type=str, default='auto',
                         choices=['auto', 'cuda', 'cpu'],
                         help='Device to use for computation')
+    parser.add_argument('--q_hat_path', type=str, default='weights/q_hat.npy', 
+                        help='Path to saved conformal q_hat (from calibrate_bmi')
 
     args = parser.parse_args()
 
@@ -131,10 +139,18 @@ def main():
         print("Failed to load model. Exiting...")
         sys.exit(1)
 
+    #Pass q hat through
+    q_hat = None
+    if os.path.exists(args.q_hat_path):
+        q_hat = float(np.load(args.q_hat_path))
+        print(f"Loaded q_hat = {q_hat:.4f} -> 90% interval is +/- {q_hat:.2f} BMI Points")
+    else:
+        print(f"Warning: no q_hat at {args.q_hat_path}; outputting point estimates only.")
+
     # Run predictions
     print("\nRunning BMI predictions...")
     print("-" * 80)
-    results = predict_bmi(model, dataloader, device)
+    results = predict_bmi(model, dataloader, device, q_hat)
 
     # Calculate summary statistics 
     if any(r['actual_bmi'] is not None for r in results):
@@ -146,7 +162,7 @@ def main():
         best = min(valid, key=lambda r: abs(r['predicted_bmi'] - r['actual_bmi']))
 
         print("-" * 80)
-        print(f"Summary Statistics (n{len(errors)}):")
+        print(f"Summary Statistics (n = {len(errors)}):")
         print(f"Average Error (MAE): {sum(errors)/len(errors):.2f}")
         print(f"MAPE: {mape:.2f}%")
         print(f"Max Error: {max(errors):.2f}")
