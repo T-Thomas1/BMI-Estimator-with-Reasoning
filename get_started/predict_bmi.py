@@ -138,16 +138,25 @@ def main():
 
     # Calculate summary statistics 
     if any(r['actual_bmi'] is not None for r in results):
-        errors = [abs(r['predicted_bmi'] - r['actual_bmi'])
-                  for r in results if r['actual_bmi'] is not None]
+        valid = [r for r in results if r['actual_bmi'] is not None]
+        errors = [abs(r['predicted_bmi'] - r['actual_bmi']) for r in valid]
+        mape = sum(e / r['actual_bmi'] * 100 for e, r in zip(errors, valid)) / len(errors)
+
+        worst = max(valid, key=lambda r: abs(r['predicted_bmi'] - r['actual_bmi']))
+        best = min(valid, key=lambda r: abs(r['predicted_bmi'] - r['actual_bmi']))
 
         print("-" * 80)
         print(f"Summary Statistics (n{len(errors)}):")
-        print(f"Average Error: {sum(errors)/len(errors):.2f}")
+        print(f"Average Error (MAE): {sum(errors)/len(errors):.2f}")
+        print(f"MAPE: {mape:.2f}%")
         print(f"Max Error: {max(errors):.2f}")
         print(f"Min Error: {min(errors):.2f}")
+        print(f" BEST (id {best['individual_id']}): pred {best['predicted_bmi']:.2f} | actual {best['actual_bmi']:.2f}")
+        print(f" WORST (id {worst['individual_id']}): pred {worst['predicted_bmi']:.2f} | actual {worst['actual_bmi']:.2f}")
 
     print(f"\nCompleted predictions for {len(results)} images.")
+
+    
 
 if __name__ == "__main__":
     main()

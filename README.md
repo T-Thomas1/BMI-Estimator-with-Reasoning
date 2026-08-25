@@ -14,7 +14,7 @@ Building on the Digital Scale approach, this project extends the pipeline with c
 
 ## Problem Statement
 
-
+A DenseNet201 model provides strong predictions with images. This project takes a heuristical approach to DenseNet's model. Testing the coverage of its predictions by utilizing a coverage guarantee. How will uncertainty quantifiction wrap DenseNet's model in a calibrated layer? 
 
 ## How It Works
 
@@ -24,31 +24,36 @@ Building on the Digital Scale approach, this project extends the pipeline with c
 
 ## Model Performance
 
+Summary Statistics (n=620):
+
+Average Error (MAE): 2.81
+
+MAPE: 11.56%
+
+Max Error: 27.75
+Min Error: 0.00
+
+BEST (id 1589): pred 19.93 | actual 19.93
+WORST (id 7117): pred 33.48 | actual 61.23 #This is an actual entry for an obese person within the Database
 
 
 ## Project Structure
 
 ```
 BMI-Estimator-with-Reasoning/
-|-- requirements.txt                # Python dependencies
-|-- config/
-|   |-- settings.py                 # Centralized configuration (paths, model names, seed)
-|-- src/
-|   |-- models/
-|   |   |-- pose_estimator.py       # MediaPipe pose detection + ratio extraction
-|   |   |-- bmi_predictor.py        # Random Forest inference + WHO categorization
-|   |-- data/
-|       |-- load_real_data.py       # BEDLAM + UniqueData pipeline, synthetic fallback
-|-- scripts/
-|   |-- train_with_real_data.py     # Model training + evaluation script
-|   |-- load_datasets.py            # Dataset exploration utilities
-|   |-- explore_bedlam.py           # BEDLAM data structure exploration
+|-- data                            # Not Needed (DigitalScale)
+|-- docs/                           # Not Needed (DigitalScale)
+|-- get_started/                    # Quick start guide with minimal setup for BMI Prediction
+    |-- dataset.py
+    |-- model.py                    # DenseNet architecture (DigitalScale)
+    |-- predict_bmi.py              # BMI Prediction on images (BMI Estimator w/Reasoning)
+    |-- train_bmi.py                # Training loop (BMI Estimator w/Reasoning)
 |-- models/
 |   |-- pretrained/
-|       |-- checkpoints/            # Serialized model + scaler (.pkl)
-|-- data/
-    |-- bmi_dataset.csv             # Synthetic training data
-    |-- combined_dataset.csv        # Combined BEDLAM + synthetic
+|       |-- checkpoints/            # Serialized model + scaler (.pkl) (BMI Estimator w/Reasoning)
+|-- notebooks/                      # Posutre clustering example (DigitalScale)
+|-- src/                            # Source Code (DigitalScale)
+|-- weights/                        # Pre-trained checkpoints for model (BMI Estimator w/Reasoning)
 ```
 
 ## Installation
@@ -61,11 +66,11 @@ BMI-Estimator-with-Reasoning/
 | Package | Purpose |
 |---------|---------|
 
-
+Tensorflow[and-cuda] | Use of GPU during training and prediction
 
 ## Design Decisions
 
-
+Tensorflow[and-cuda]
 
 ## License
 

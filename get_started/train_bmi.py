@@ -13,8 +13,6 @@ ds = load_dataset("Dongrae/celeb-fbi")
 df_train = ds['train']
 df_test = ds['test']
 
-
-batch_size = 16 #32 batches of dataset each time
 epochs = 40 #DigitalScale utilized 40 so we will too
 
 #Constants for image preprocessing
